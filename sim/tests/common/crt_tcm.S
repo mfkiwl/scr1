@@ -3,6 +3,8 @@
 ///
 
 #include "riscv_csr_encoding.h"
+#include "reloc.h"
+#include "sc_test.h"
 
 # define LREG lw
 # define SREG sw
@@ -13,7 +15,7 @@
     .globl trap_entry
     .globl handle_trap
     .globl sc_exit
-    .weak trap_entry, handle_trap, sc_exit
+    .weak trap_entry, handle_trap
 
     .section .text.init
     .org (64*3)
@@ -23,36 +25,19 @@ machine_trap_entry:
 
     .align 6
 _start:
+#ifndef __RVE_EXT
+    zero_int_regs 1, 31
+#else
+    zero_int_regs 1, 15
+#endif
     # Global pointer init
     .option push
     .option norelax
     la    gp, __global_pointer$
     .option pop
-    la    a0, __reloc_start
-    la    a1, __TEXT_START__
-    la    a2, __DATA_START__
-    beq   a0, a1, 21f
-    j     2f
-1:  lw    a3, 0(a0)
-    sw    a3, 0(a1)
-    add   a0, a0, 4
-    add   a1, a1, 4
-2:  bne   a1, a2, 1b
-    # clear bss
-    la    a2, __BSS_START__
-21: la    a1, __BSS_END__
-    j     4f
-3:  sw    zero, 0(a2)
-    add   a2, a2, 4
-4:  bne   a1, a2, 3b
-    // init stack
-    la    sp, __C_STACK_TOP__
-    // init hart0 TLS
-    la    a0, _tdata_begin
-    la    a2, _tbss_end
-    sub   a1, a2, a0
-    la    a4, __STACK_START__
-    sub   tp, a4, a1
+
+    RELOC_PROC;
+
     // init tdata
     mv    a1, tp
     la    a2, _tdata_end
@@ -84,7 +69,8 @@ _start:
     li    a1, 0
 9:  auipc t0, %pcrel_hi(main)
     jalr  t0, %pcrel_lo(9b)
-    j     sc_exit
+    la    t0, sc_exit
+    //j     sc_exit
 
 trap_entry:
     addi sp, sp, -272
@@ -166,7 +152,6 @@ trap_entry:
     mret
 
 handle_trap:
-sc_exit:
     j SIM_EXIT
 
 // end of crt.S

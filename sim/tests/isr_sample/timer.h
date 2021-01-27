@@ -2,7 +2,6 @@
 #define __TIMER__H
 
 
-#define MCAUSE_TMR_IRQ (1 << 31 | 7)
 
 #define MEM_MTIME_MASK  0xF0000000
 #define MEM_MTIME_CTRL  0x00490000

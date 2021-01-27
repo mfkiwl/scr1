@@ -3,7 +3,7 @@ ADD_ASM_MACRO ?= -D__ASSEMBLY__=1
 FLAGS = -O2 -funroll-loops -fpeel-loops -fgcse-sm -fgcse-las $(ADD_FLAGS)
 FLAGS_STR = "$(FLAGS)"
 
-CFLAGS_COMMON = -static -std=gnu99 -fno-common -fno-builtin-printf
+CFLAGS_COMMON = -static -std=gnu99 -fno-common -fno-builtin-printf -DTCM=$(TCM)
 CFLAGS_ARCH = -Wa,-march=rv32$(ARCH) -march=rv32$(ARCH) -mabi=$(ABI)
 
 CFLAGS := $(FLAGS) $(EXT_CFLAGS) \
@@ -14,11 +14,11 @@ $(ADD_CFLAGS)
 
 LDFLAGS   ?= -nostartfiles -nostdlib -lc -lgcc -march=rv32$(ARCH) -mabi=$(ABI)
 
-ifdef TCM
-ld_script := $(inc_dir)/link_tcm.ld
+ifeq (,$(findstring 0,$(TCM)))
+ld_script ?= $(inc_dir)/link_tcm.ld
 asm_src   ?= crt_tcm.S
 else
-ld_script := $(inc_dir)/link.ld
+ld_script ?= $(inc_dir)/link.ld
 asm_src   ?= crt.S
 endif
 

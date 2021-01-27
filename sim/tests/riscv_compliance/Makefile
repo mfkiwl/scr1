@@ -8,7 +8,10 @@
 ARCH ?=im
 override ARCH:=rv32$(ARCH)
 
-#I IM IMC IC 
+src_dir       := $(CURDIR)
+RISCV_COMPLIANCE_TESTS := $(src_dir)/../../../dependencies/riscv-compliance/
+
+#I IM IMC IC
 #EM EMC EC
 
 ifeq (rv32e,$(findstring rv32e,$(ARCH)))
@@ -19,12 +22,10 @@ else ## ifdef SCR_BASE_RVE_EXT
     $(info >>> I32 TESTS)
     included_i += $(filter %.S,\
                         $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32i/src/*))
-    $(info >>> UI32 TESTS)
-    included_i += $(filter %.S,\
-                        $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32ui/src/*))
-    $(info >>> M32 TESTS)
-    included_i += $(filter %.S,\
-                        $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32mi/src/*))
+	included_i += $(filter %.S,\
+                        $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32Zicsr/src/*))
+	included_i += $(filter %.S,\
+                        $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32Zifencei/src/*))
     compliance_set += $(included_i)
   endif
 
@@ -34,15 +35,7 @@ else ## ifdef SCR_BASE_RVE_EXT
     included_im += $(filter %.S,\
                         $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32im/src/*))
     compliance_set += $(included_im)
-  endif ## 
-
-  #ifeq $(or (rv32imc,$(findstring rv32imc,$(ARCH))), (rv32ic,$(findstring rv32ic,$(ARCH))))
-  ifeq ($(ARCH),$(filter $(ARCH), rv32ic rv32imc))
-    $(info >>> UC32 TESTS)
-    included_ic += $(filter %.S,\
-                        $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32uc/src/*))
-    compliance_set += $(included_ic)
-  endif ## ifdef 
+  endif ##
 
   ifeq (rv32imc,$(findstring rv32imc,$(ARCH)))
     $(info >>> IMC32 TESTS)
@@ -50,8 +43,9 @@ else ## ifdef SCR_BASE_RVE_EXT
                         $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32imc/src/*))
     compliance_set += $(included_imc)
   endif ## ifeq (rv32imc,$(findstring rv32imc,$(ARCH)))
-
-endif ## 
+  ifeq (rv32ic,$(findstring rv32ic,$(ARCH)))
+  endif
+endif ##
 
 
 $(info >>>$(ARCH) set included)
@@ -65,11 +59,12 @@ $(info >>>>> compliance set: $(compliance_set))
 dst_dir       := $(bld_dir)
 test_name     := riscv_compliance
 bld_dir       := $(addprefix $(dst_dir)/, $(test_name))
-src_dir       := $(CURDIR)
 obj_dir       := $(bld_dir)/riscv_compliance_objs
-cut_list      := I-EBREAK-01 I-ECALL-01 I-MISALIGN_JMP-01 I-MISALIGN_LDST-01
-cut_list      += scall csr shamt simple
-reference_src := $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/*/*/*.reference_output)
+
+#cut_list      += scall csr shamt simple
+cut_list += I-MISALIGN_JMP-01 I-MISALIGN_LDST-01 I-EBREAK-01 I-ECALL-01
+reference_src += $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32i*/*/*.reference_output)
+reference_src += $(wildcard $(RISCV_COMPLIANCE_TESTS)/riscv-test-suite/rv32Zi*/*/*.reference_output)
 testnames     := $(basename $(notdir $(compliance_set)))
 filtered      := $(filter-out $(cut_list),$(testnames))
 objs          := $(addprefix $(bld_dir)/,$(filtered:%=%.o))
@@ -82,24 +77,26 @@ compliance_output ?= true
 
 testnames_i     := $(basename $(notdir $(included_i)))
 testnames_im     := $(basename $(notdir $(included_im)))
-testnames_ic     := $(basename $(notdir $(included_ic)))
 testnames_imc     := $(basename $(notdir $(included_imc)))
 filtered_i      := $(filter-out $(cut_list),$(testnames_i))
 filtered_im      := $(filter-out $(cut_list),$(testnames_im))
-filtered_ic      := $(filter-out $(cut_list),$(testnames_ic))
 filtered_imc      := $(filter-out $(cut_list),$(testnames_imc))
 
-# ARCH_FLAGS := -Wa,-march=rv32im -march=rv32im 
+# ARCH_FLAGS := -Wa,-march=rv32im -march=rv32im
 # ARCH_FLAGS_C := -Wa,-march=rv32imc -march=rv32imc
 CFLAGS := -I$(inc_dir) -I$(src_dir) -DASM -mabi=ilp32 -D__riscv_xlen=32 -w
 LDFLAGS := -static -fvisibility=hidden -nostdlib -nostartfiles -T$(inc_dir)/link.ld -march=$(ARCH) -mabi=ilp32
+GCCVERSIONGT7 := $(shell expr `$(RISCV_GCC) -dumpfullversion | cut -f1 -d'.'` \> 7)
+ifeq "$(GCCVERSIONGT7)" "1"
+	LDFLAGS += -mno-relax
+endif
 VPATH += $(src_dir) $(bld_dir) $(obj_dir) $(asm_path) $(ref_path) $(RISCV_COMPLIANCE_TESTS)
 
 ifeq ($(compliance_output), true)
 CFLAGS += -D_COMPLIANCE_OUTPUT
 endif
 
-default: clean check_version cp_asm ref_data $(test_elf) $(test_hex) $(test_dump)
+default: clean log_requested_tgt check_version cp_asm ref_data $(test_elf) $(test_hex) $(test_dump)
 
 define compile_template
 $(obj_dir)/$(1).o: $(obj_dir) cp_asm
@@ -119,8 +116,11 @@ endef
 
 $(foreach SRC,$(filtered_i),$(eval $(call compile_template,$(SRC),-march=rv32i)))
 $(foreach SRC,$(filtered_im),$(eval $(call compile_template,$(SRC),-march=rv32im)))
-$(foreach SRC,$(filtered_ic),$(eval $(call compile_template,$(SRC),-march=rv32iac)))
-$(foreach SRC,$(filtered_imc),$(eval $(call compile_template,$(SRC),-march=rv32imac)))
+$(foreach SRC,$(filtered_imc),$(eval $(call compile_template,$(SRC),-march=rv32imc)))
+
+
+log_requested_tgt: $(bld_dir)
+	$(foreach test_name, $(filtered), $(eval $(shell echo compliance_$(test_name).hex >> $(bld_dir)/../test_info)))
 
 $(bld_dir) :
 	mkdir -p $(bld_dir)
@@ -152,12 +152,11 @@ cp_asm:
 	mkdir -p $(bld_dir)/compliance_asm
 	$(call preprocessing,$(included_i),-march=rv32i)
 	$(call preprocessing,$(included_im),-march=rv32im)
-	$(call preprocessing,$(included_ic),-march=rv32iac)
-	$(call preprocessing,$(included_imc),-march=rv32imac)
+	$(call preprocessing,$(included_imc),-march=rv32imc)
 
 
 riscv_compliance_tests_dir    := $(if $(RISCV_COMPLIANCE_TESTS), $(RISCV_COMPLIANCE_TESTS), ./undefined)
-riscv_tests_commit := 9f280717f26f50833357db9bfb77a8c79835f162
+riscv_tests_commit := d51259b2a949be3af02e776c39e135402675ac9b
 ## commit hash readed from local copy of https://github.com/riscv/riscv-compliance
 tmp_commit = $(shell cd $(riscv_compliance_tests_dir) 2>/dev/null && git log -1 | grep "commit" | cut -f2 -d ' ')
 is_commit_good = $(if $(subst $(riscv_tests_commit),,$(tmp_commit)),false,true)
@@ -173,18 +172,13 @@ check_version : $(riscv_compliance_tests_dir)
 		echo "      directory not exist!" && \
 		echo "==========================================================================$(NC)" ; \
 	fi
-ifneq (,$(is_repo_changed))
-	@echo -e "$(RED)=========================================================================="
-	@echo "   Error! Repo '$(riscv_compliance_tests_dir)' "
-	@echo "     must be unchanged!"
-	@echo -e "==========================================================================$(NC)"
-	exit 1
-endif
 ifneq ($(is_commit_good),true)
 	@echo -e "$(RED)=========================================================================="
-	@echo "   Error! riscv compliance tests must point to commit $(riscv_tests_commit)"
+	@echo "   Warning! Execution of test code is not guaranteed "
+	@echo "   while using the current commit of repository located at : $(riscv_compliance_tests_dir) ."
+	@echo "   "
+	@echo "   riscv_compliance repository must point to commit $(riscv_tests_commit)!"
 	@echo -e "==========================================================================$(NC)"
-	exit 1
 endif
 
 $(riscv_compliance_tests_dir) :.
