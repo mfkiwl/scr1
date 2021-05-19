@@ -1,4 +1,4 @@
-/// Copyright by Syntacore LLC Â© 2016-2020. See LICENSE for details
+/// Copyright by Syntacore LLC © 2016-2021. See LICENSE for details
 /// @file       <scr1_arch_description.svh>
 /// @brief      Architecture description file
 ///
@@ -6,15 +6,16 @@
 `ifndef SCR1_ARCH_DESCRIPTION_SVH
 `define SCR1_ARCH_DESCRIPTION_SVH
 
+
 //------------------------------------------------------------------------------
 // CORE FUNDAMENTAL PARAMETERS
 //------------------------------------------------------------------------------
 
 // SCR1 core identifiers
-`define SCR1_MIMPID             32'h20111300
+`define SCR1_MIMPID             32'h21051400
 `define SCR1_MVENDORID          32'h00000000
 
-// Width of main registers and busses
+// Width of main registers and buses
 `define SCR1_XLEN               32
 `define SCR1_IMEM_AWIDTH        `SCR1_XLEN
 `define SCR1_IMEM_DWIDTH        `SCR1_XLEN
@@ -23,6 +24,34 @@
 
 // TAP IDCODE
 `define SCR1_TAP_IDCODE         'hDEB11001
+
+
+`ifdef SCR1_ARCH_CUSTOM
+//------------------------------------------------------------------------------
+// INCLUDE SCR1_ARCH_CUSTOM.SVH
+//------------------------------------------------------------------------------
+
+// The external file scr1_arch_custom.svh is used for the open SCR1-SDK project,
+// and can also be used for any custom projects.
+
+// The file sets:
+// - target platform (FPGA/ASIC), which affects the choice of logical constructs;
+// - device build ID;
+// - address constants;
+// - could enables configuration parameters.
+
+// Possible targets:
+// `define SCR1_TRGT_FPGA_INTEL         // target platform is Intel FPGAs
+// `define SCR1_TRGT_FPGA_INTEL_MAX10   // target platform is Intel MAX 10 FPGAs (used in the SCR1-SDK project)
+// `define SCR1_TRGT_FPGA_INTEL_ARRIAV  // target platform is Intel Arria V FPGAs (used in the SCR1-SDK project)
+// `define SCR1_TRGT_FPGA_XILINX        // target platform is Xilinx FPGAs (used in the SCR1-SDK project)
+// `define SCR1_TRGT_ASIC               // target platform is ASIC
+// `define SCR1_TRGT_SIMULATION         // target is simulation (enable simulation code)
+
+ `include "scr1_arch_custom.svh"
+
+`endif // SCR1_ARCH_CUSTOM
+
 
 //------------------------------------------------------------------------------
 // RECOMMENDED CORE ARCHITECTURE CONFIGURATIONS
@@ -150,26 +179,6 @@ parameter bit [`SCR1_DMEM_AWIDTH-1:0]   SCR1_TIMER_ADDR_PATTERN     = 'h00490000
 // Device build ID
  `define SCR1_ARCH_BUILD_ID             `SCR1_MIMPID
 
-`else // SCR1_ARCH_CUSTOM
-
-// The external file scr1_arch_custom.svh is used for the open SCR1-SDK project,
-// and can also be used for any custom projects.
-
-// The file sets:
-// - target platform (FPGA/ASIC), which affects the choice of logical constructs;
-// - device build ID;
-// - address constants.
-
-// Possible targets:
-// `define SCR1_TRGT_FPGA_INTEL         // target platform is Intel FPGAs
-// `define SCR1_TRGT_FPGA_INTEL_MAX10   // target platform is Intel MAX 10 FPGAs (used in the SCR1-SDK project)
-// `define SCR1_TRGT_FPGA_INTEL_ARRIAV  // target platform is Intel Arria V FPGAs (used in the SCR1-SDK project)
-// `define SCR1_TRGT_FPGA_XILINX        // target platform is Xilinx FPGAs (used in the SCR1-SDK project)
-// `define SCR1_TRGT_ASIC               // target platform is ASIC
-// `define SCR1_TRGT_SIMULATION         // target is simulation (enable simulation code)
-
- `include "scr1_arch_custom.svh"
-
 `endif // SCR1_ARCH_CUSTOM
 
 
@@ -195,6 +204,7 @@ parameter bit [`SCR1_DMEM_AWIDTH-1:0]   SCR1_TIMER_ADDR_PATTERN     = 'h00490000
 
 //`define SCR1_TRGT_SIMULATION            // enable simulation code (automatically defined by root makefile)
 //`define SCR1_TRACE_LOG_EN               // enable tracelog
+//`define SCR1_XPROP_EN                   // enable X-propagation
 
 // Addresses used in testbench
 localparam [`SCR1_XLEN-1:0]      SCR1_SIM_EXIT_ADDR      = 32'h0000_00F8;

@@ -170,7 +170,7 @@ always_comb begin
     if (csr2tdu_req_i) begin
         case (csr2tdu_addr_i)
             SCR1_CSR_ADDR_TDU_OFFS_TSELECT: begin
-                tdu2csr_rdata_o = {30'b0, csr_tselect_ff};
+                tdu2csr_rdata_o = {'0, csr_tselect_ff};
             end
             SCR1_CSR_ADDR_TDU_OFFS_TDATA2 : begin
                 for(int unsigned i = 0; i < MTRIG_NUM; ++i) begin
@@ -232,6 +232,8 @@ always_comb begin
                 end
 `endif // SCR1_TDU_ICOUNT_EN
             end
+            default : begin
+            end
         endcase
     end
 end
@@ -255,6 +257,8 @@ always_comb begin
         SCR1_CSR_CMD_CLEAR: begin
             csr_wr_req  = |csr2tdu_wdata_i;
             csr_wr_data = tdu2csr_rdata_o & ~csr2tdu_wdata_i;
+        end
+        default : begin
         end
     endcase
 end
@@ -293,6 +297,8 @@ always_comb begin
                         csr_addr_tdata2[i] = 1'b1;
                     end
                 end
+            end
+            default : begin
             end
         endcase
     end
@@ -542,9 +548,9 @@ end
 
 SVA_TDU_X_CONTROL : assert property (
     @(negedge clk) disable iff (~rst_n)
-    !$isunknown({rst_n, clk, clk_en, tdu_dsbl_i, csr2tdu_req_i,
+    !$isunknown({clk_en, tdu_dsbl_i, csr2tdu_req_i,
                  exu2tdu_imon_i.vd, lsu2tdu_dmon_i.vd, exu2tdu_bp_retire_i})
-    ) else $error("TDU Error: control signals is X - %0b", {rst_n, clk, clk_en,
+    ) else $error("TDU Error: control signals is X - %0b", {clk_en,
     tdu_dsbl_i, csr2tdu_req_i, exu2tdu_imon_i.vd, lsu2tdu_dmon_i.vd, exu2tdu_bp_retire_i});
 
 SVA_DM_X_CLK_EN : assert property (
